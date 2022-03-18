@@ -1,0 +1,12 @@
+*/.ipynb_checkpoints
+*/__pycache__
+.ipynb_checkpoints/
+exp/
+bad_audio
+conf/
+!conf/logfbank_train.json
+dataset/
+!dataset/logfbank*
+interspeech_emo/
+*/*/.ipynb*
+*/*/__pycache*
