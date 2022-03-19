@@ -8,7 +8,7 @@ import soundfile as sf
 from tqdm import tqdm
 from scipy.special import softmax
 from python_speech_features import logfbank
-from module.model import Gvector
+from module.model import Gvector, Gvector_rnn
 
 # config:
 mdl_kwargs = {
@@ -16,6 +16,17 @@ mdl_kwargs = {
     "block": "BasicBlock", 
     "num_blocks": [2,2,2,2], 
     "embd_dim": 1024, 
+    "drop": 0.3, 
+    "n_class": 6
+}
+
+mdl_rnn_kwargs = {
+    "channels": 16, 
+    "block": "BasicBlock", 
+    "num_blocks": [2,2,2,2], 
+    "embd_dim": 1024, 
+    "rnn_dim": 80,
+    "rnn_layers": 1,
     "drop": 0.3, 
     "n_class": 6
 }
@@ -34,28 +45,27 @@ def parse_args():
     desc="infer labels"
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--dataset', type=str, default=None, help="path to the dataset dir for inference")
-    parser.add_argument('--output', type=str, default=None, help="path to the output dir")
-    parser.add_argument('--label2int', type=str, default='index/label2int.json')
+    parser.add_argument('--output', type=str, default=None, help="path to the output file")
     parser.add_argument('--model', type=str, required=True)
+    parser.add_argument('--device', type=str, default="cuda:0", help="device to infer")
+    parser.add_argument('--rnn', action="store_true", default="store_false")
     return parser.parse_args()
-    
-def load_label2int(label2int_path):
-    with open(label2int_path, 'r') as f:
-        label2int = json.load(f)
-    return label2int
 
 
 class SVExtractor():
-    def __init__(self, mdl_kwargs, fbank_kwargs, model_path, device):
-        self.model = self.load_model(mdl_kwargs, model_path)
+    def __init__(self, mdl_kwargs, fbank_kwargs, model_path, isRnn, device):
+        self.model = self.load_model(mdl_kwargs, model_path, isRnn, device)
         self.model.eval()
         self.device = device
         self.model = self.model.to(self.device)
         self.fbank_kwargs = fbank_kwargs
 
-    def load_model(self, mdl_kwargs, model_path):
-        model = Gvector(**mdl_kwargs)
-        state_dict = torch.load(model_path)
+    def load_model(self, mdl_kwargs, model_path, isRnn, device):
+        if isRnn:
+            model = Gvector_rnn(**mdl_rnn_kwargs)
+        else:
+            model = Gvector(**mdl_kwargs)
+        state_dict = torch.load(model_path, map_location=device)
         if 'model' in state_dict.keys():
             state_dict = state_dict['model']
         model.load_state_dict(state_dict)
@@ -83,17 +93,15 @@ if __name__ == "__main__":
     args = parse_args()
     model_path = args.model
     dataset_dir = args.dataset.rstrip('/') + '/'
-    output_dir = args.output.rstrip('/') + '/'
+    output_dir = '/'.join(args.output.split('/')[:-1])
     os.makedirs(output_dir, exist_ok=True)
-    label2int_path = args.label2int
-    label2int_dict = load_label2int(label2int_path)
     print('... loading model ...')
-    sv_extractor = SVExtractor(mdl_kwargs, fbank_kwargs, model_path, device='cpu')
+    sv_extractor = SVExtractor(mdl_kwargs, fbank_kwargs, model_path, args.rnn, device=args.device)
     print('... loaded ...')
     all_wavs = [dataset_dir+wav for wav in os.listdir(dataset_dir) if wav.endswith('.h5')]
     predictions = []
     for wav in tqdm(all_wavs, desc=dataset_dir.split('/')[-2]):
         embd = softmax(sv_extractor(wav))
         predictions.append("%s, %d"%(wav.split('/')[-1].replace('.h5','.wav'),np.argmax(embd)))
-    with open(output_dir+'answer.txt','w') as f:
+    with open(args.output,'w') as f:
         f.write('\n'.join(predictions))
