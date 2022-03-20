@@ -37,6 +37,7 @@ def parse_args():
     parser.add_argument('--output', type=str, default=None, help="path to the output dir")
     parser.add_argument('--model-clf', type=str, required=True)
     parser.add_argument('--model-uad', type=str, required=True)
+    parser.add_argument('--device', type=str, default="cuda:0", help="device to infer")
     return parser.parse_args()
     
 
@@ -78,11 +79,11 @@ if __name__ == "__main__":
     model_clf_path = args.model_clf
     model_uad_path = args.model_uad
     dataset_dir = args.dataset.rstrip('/') + '/'
-    output_dir = args.output.rstrip('/') + '/'
+    output_dir = '/'.join(args.output.split('/')[:-1])
     os.makedirs(output_dir, exist_ok=True)
     print('... loading model ...')
-    clf_extractor = SVExtractor(mdl_clf_kwargs, model_clf_path, device='cpu')
-    uad_extractor = SVExtractor(mdl_uad_kwargs, model_uad_path, device='cpu')
+    clf_extractor = SVExtractor(mdl_clf_kwargs, model_clf_path, device=args.device)
+    uad_extractor = SVExtractor(mdl_uad_kwargs, model_uad_path, device=args.device)
     print('... loaded ...')
     all_wavs = [dataset_dir+wav for wav in os.listdir(dataset_dir) if wav.endswith('.h5')]
     predictions = []
@@ -93,5 +94,5 @@ if __name__ == "__main__":
         else:
             embd = softmax(clf_extractor(wav))
             predictions.append("%s, %d"%(wav.split('/')[-1].replace('.h5','.wav'), np.argmax(embd)))
-    with open(output_dir+'answer_uad.txt','w') as f:
+    with open(args.output,'w') as f:
         f.write('\n'.join(predictions))
