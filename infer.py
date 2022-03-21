@@ -48,7 +48,7 @@ def parse_args():
     parser.add_argument('--output', type=str, default=None, help="path to the output file")
     parser.add_argument('--model', type=str, required=True)
     parser.add_argument('--device', type=str, default="cuda:0", help="device to infer")
-    parser.add_argument('--rnn', action="store_true", default="store_false")
+    parser.add_argument('--rnn', action="store_true")
     return parser.parse_args()
 
 
