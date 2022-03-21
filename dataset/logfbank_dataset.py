@@ -35,6 +35,11 @@ class LogfbankDataset(Dataset):
 
     def init_label(self, utt2label, spk2int=None):
         utt2lab = {x.split()[0]:x.split()[1] for x in open(utt2label)}
+        if not len(utt2lab) == len(self.utt2wavpath):
+            for utt in self.utt2wavpath:
+                if "_" in utt:
+                    if utt.split('_')[0] in utt2lab:
+                        utt2lab[utt] = utt2lab[utt.split('_')[0]]
         if spk2int is None:
             spks = sorted(set(utt2lab.values()))
             spk2int = {spk:i for i, spk in enumerate(spks)}
@@ -43,6 +48,7 @@ class LogfbankDataset(Dataset):
                 spk2int = json.load(f)
 #             spk2int = {x.split()[0]:int(x.split()[1]) for x in open(spk2int)} 
         utt2label = {utt:spk2int[spk] for utt, spk in utt2lab.items()}
+        assert len(utt2label) == len(self.utt2wavpath), "num of dataset instances(%d) doesn't agree with num of labels(%d)"%(len(utt2label), len(self.utt2wavpath))
         return utt2label
         
         
@@ -69,11 +75,13 @@ class LogfbankDataset(Dataset):
             return y
 
 
-    def extract_feature(self, h5Dir):
+    def extract_feature(self, h5Dir, cmn=True):
         hf = h5py.File(h5Dir, 'r')
         logfbankFeat = np.array(hf.get('logfbank'))
         hf.close()
         logfbankFeat = self.trun_wav(logfbankFeat, self.tdur, self.padding, self.ispad)
+        if cmn:
+            logfbankFeat -= logfbankFeat.mean(axis=0, keepdims=True)
         return logfbankFeat.astype('float32')
 
 
@@ -91,6 +99,8 @@ class LogfbankDataset(Dataset):
         return utt, feat, label
 #         return utt, feat
 
+    def get_labels(self):
+        return list(self.utt2label.values())
 
     def __len__(self):
         return self.len
