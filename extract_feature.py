@@ -42,13 +42,14 @@ def extract(i, args):
     os.makedirs(feats_dir, exist_ok=True)
             
     # init lists for generation
-    tags = [tag for tag in os.listdir(dataset_dir) if not tag.startswith('.')]
+    # tags = [tag for tag in os.listdir(dataset_dir) if not tag.startswith('.')]
     
     # read from index file
     all_wavs = []
-    for tag in tags:
-        all_wavs += [dataset_dir+ tag+'/' + wav for wav in os.listdir(dataset_dir+tag) if wav.endswith(".wav")]
-        os.makedirs(feats_dir+tag, exist_ok=True)
+    all_wavs += [dataset_dir + wav for wav in os.listdir(dataset_dir) if wav.endswith(".wav")]
+    # for tag in tags:
+    #     all_wavs += [dataset_dir+ tag+'/' + wav for wav in os.listdir(dataset_dir+tag) if wav.endswith(".wav")]
+    #     os.makedirs(feats_dir+tag, exist_ok=True)
     
     # assign tasks
     one_portion = len(all_wavs) // args.nproc
@@ -57,16 +58,16 @@ def extract(i, args):
     else:
         all_wavs = all_wavs[i*one_portion:(i+1)*one_portion]
 
-    extracted = []
-    for tag in tags:
-        extracted += os.listdir(feats_dir+tag)
+    extracted = os.listdir(feats_dir)
+    # for tag in tags:
+    #     extracted += os.listdir(feats_dir+tag)
 
     for seg in tqdm(all_wavs, desc="extracting %s"%os.getpid()):
         seg_name = seg.split("/")[-1]
-        tag_name = seg.split("/")[-2]
+        # tag_name = seg.split("/")[-2]
         if seg_name.replace("wav","h5") in extracted:
             continue
-        h5_out = "%s/%s/%s.h5"%(feats_dir, tag_name, seg_name.split(".")[0])
+        h5_out = "%s/%s.h5"%(feats_dir, seg_name.split(".")[0])
         try:
             feat_mfcc, feat_logfbank = featExtractWriter(seg)
         except:
