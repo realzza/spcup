@@ -24,7 +24,11 @@ def roc_auc(output: torch.Tensor, target: torch.Tensor) -> float:
         assert pred.shape[0] == len(target)
         y_true = target.detach().cpu().numpy()
         y_pred = pred.detach().cpu().numpy()
-    return roc_auc_score(y_true, y_pred)
+    try: 
+        return roc_auc_score(y_true, y_pred)
+    except:
+        print('bad roc_auc score')
+        return -1
 
 def top_k_acc(output, target, k=3):
     with torch.no_grad():
